@@ -1,5 +1,6 @@
 import pygame
 
+print(1)
 print(2)
 DISPLAY_SIZE = (1280, 720)
 col = 32
