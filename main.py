@@ -4,18 +4,29 @@ import sys
 import time
 
 DISPLAY_SIZE = (1280, 720)
-def load_image(name, colorkey=None):
-    fullname = os.path.join('', name)
+pygame.init()
+pygame.display.set_caption('Mario and Doom')
+screen = pygame.display.set_mode(DISPLAY_SIZE)
+start_game = True
+player_sprite = pygame.sprite.Group()
+world_sprite = pygame.sprite.Group()
 
-    if not os.path.isfile(fullname):
-        print(f"Файл с изображением '{fullname}' не найден")
-        sys.exit()
-    image = pygame.image.load(fullname)
-    return image
+
+# def map_generator()
+
+def load_image(image_path, colorkey=None):
+    result = pygame.image.load(image_path)
+    if colorkey is not None:
+        if colorkey == -1:
+            colorkey = result.get_at((0, 0))
+        result.set_colorkey(colorkey)
+    else:
+        result.convert_alpha()
+    return result
 
 
 class Player(pygame.sprite.Sprite):
-    image = load_image("player.png")
+    image = load_image("player.png", -1)
 
     def __init__(self, group, minX, maxX):
         super().__init__(group)
@@ -72,26 +83,20 @@ class Player(pygame.sprite.Sprite):
         self.rect = self.rect
 
 
-all_sprites = pygame.sprite.Group()
-player = Player(all_sprites, 0, 3000)
-
-running = True
-pygame.init()
-pygame.display.set_caption('Mario and Doom')
-screen = pygame.display.set_mode(DISPLAY_SIZE)
+player = Player(player_sprite, 0, 3000)
 clock = pygame.time.Clock()
 
-while running:
+while start_game:
     dt = clock.tick(60)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            running = False
+            start_game = False
 
-    screen.fill((0, 0, 0))
+    screen.fill((93, 148, 251))
 
     keys = pygame.key.get_pressed()
 
-    all_sprites.draw(screen)
+    player_sprite.draw(screen)
     if keys[pygame.K_d]:
         player.next(dt)
     if keys[pygame.K_a]:
