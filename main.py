@@ -3,9 +3,16 @@ import threading
 import time
 
 DISPLAY_SIZE = (1024, 512)
+MAX_MAP_POS = (61, 27)
+SG = True
+isJump = False
+isJumpCounter = 0
+JumpTime = 0
+lvl_board = list()
+
 pygame.init()
+
 screen = pygame.display.set_mode(DISPLAY_SIZE)
-start_game = True
 player_sprite = pygame.sprite.Group()
 world_sprite = pygame.sprite.Group()
 
@@ -43,14 +50,18 @@ class Player(pygame.sprite.Sprite):
         self.rect.x = self.rect.x - self.velocity_walk
         return self.rect.x
 
+    def gravit(self):
+        self.rect.y = self.rect.y + 16
+        self.map_pos[1] = self.map_pos[1] - 1
+
+    def jump(self):
+        self.rect.y = self.rect.y - 32
+
     def update(self):
         self.rect = self.rect
 
 
 player = Player(player_sprite)
-
-max_map_pos = [61, 27]
-lvl_board = None
 
 
 def canGo(pos):
@@ -61,6 +72,22 @@ def canGo(pos):
                 count += 1
     if count == 8:
         return True
+    return False
+
+
+def canJump(pos):
+    if MAX_MAP_POS[1] > pos[1] + 5:
+        if lvl_board[pos[1] + 5][pos[0]] == '/':
+            if lvl_board[pos[1] + 5][pos[0] + 1] == '/':
+                return True
+    return False
+
+
+def checkGrav(pos):
+    if pos[1] != 0:
+        if lvl_board[pos[1] - 1][pos[0]] == '/':
+            if lvl_board[pos[1] - 1][pos[0] + 1] == '/':
+                return True
     return False
 
 
@@ -87,23 +114,48 @@ def map_generator(lvl):
     grass.rect.y = 448
 
 
-map_generator('lvl1.txt')
+def lvl_loader(lvl):
+    global isJump, isJumpCounter, JumpTime, lvl_board
+    isJump = False
+    isJumpCounter = 0
+    JumpTime = 0
+
+    lvl_board = list()
+    map_generator(lvl)
+
+
+lvl_loader('lvl1.txt')
 
 clock = pygame.time.Clock()
-while start_game:
-
+while SG:
     dt = clock.tick(30)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            start_game = False
+            SG = False
+        elif event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_SPACE and not isJump:
+                if JumpTime <= time.time():
+                    isJumpCounter = 0
+                    isJump = True
 
     screen.fill((93, 148, 251))
-
     player_sprite.draw(screen)
     world_sprite.draw(screen)
 
     keys = pygame.key.get_pressed()
-    if keys[pygame.K_d] and player.map_pos[0] + 1 <= max_map_pos[0]:
+    if isJump and isJumpCounter != 3:
+        if canJump(player.map_pos):
+            player.map_pos[1] += 2
+            player.jump()
+            isJumpCounter += 1
+            if isJumpCounter == 3:
+                isJump = False
+                JumpTime = time.time() + 0.35
+        else:
+            isJump = False
+            JumpTime = time.time() + 0.35
+
+    if keys[pygame.K_d] and player.map_pos[0] + 1 <= MAX_MAP_POS[0]:
         if canGo([player.map_pos[0] + 1, player.map_pos[1]]):
             player.map_pos[0] += 1
             player.next()
@@ -112,6 +164,9 @@ while start_game:
         if canGo([player.map_pos[0] - 1, player.map_pos[1]]):
             player.map_pos[0] -= 1
             player.back()
+
+    if checkGrav(player.map_pos) and not isJump:
+        player.gravit()
 
     pygame.display.flip()
 pygame.quit()
