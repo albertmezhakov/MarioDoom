@@ -1,5 +1,4 @@
 import pygame
-import threading
 import time
 
 DISPLAY_SIZE = (1024, 512)
@@ -36,7 +35,6 @@ class Player(pygame.sprite.Sprite):
         self.image = Player.image
         self.rect = self.image.get_rect()
         self.velocity_walk = 16
-        self.velocity_jump = 50
         self.map_pos = [1, 0]
 
         self.rect.x = 16
@@ -141,6 +139,7 @@ while SG:
     screen.fill((93, 148, 251))
     player_sprite.draw(screen)
     world_sprite.draw(screen)
+    # пули
 
     keys = pygame.key.get_pressed()
     if isJump and isJumpCounter != 3:
