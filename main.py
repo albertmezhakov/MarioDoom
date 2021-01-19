@@ -14,6 +14,27 @@ pygame.init()
 screen = pygame.display.set_mode(DISPLAY_SIZE)
 player_sprite = pygame.sprite.Group()
 world_sprite = pygame.sprite.Group()
+bullet_sprite = pygame.sprite.Group()
+
+
+class Bullet(pygame.sprite.Sprite):
+    def __init__(self, map_pos, group):
+        super().__init__(group)
+        self.map_pos = [map_pos[0] + 1, map_pos[1] + 1]
+        self.image = pygame.Surface((10, 5))
+        self.image.fill(color=(255, 255, 0))
+        self.rect = self.image.get_rect()
+        self.rect.x = self.map_pos[0] * 16
+        self.rect.y = 432 - self.map_pos[1] * 16
+        print(self.rect.y)
+        self.speedx = 16
+
+    def update(self):
+        if lvl_board[bul.map_pos[1]][self.map_pos[0] + 1] == '/':
+            self.rect.x += bul.speedx
+            self.map_pos[0] += 1
+        else:
+            self.kill()
 
 
 def load_image(image_path, colorkey=None):
@@ -124,6 +145,8 @@ def lvl_loader(lvl):
 
 lvl_loader('lvl1.txt')
 
+bullet = []
+
 clock = pygame.time.Clock()
 while SG:
     dt = clock.tick(30)
@@ -135,11 +158,16 @@ while SG:
                 if JumpTime <= time.time():
                     isJumpCounter = 0
                     isJump = True
+            if event.key == pygame.K_h:
+                bullet.append(Bullet(player.map_pos, bullet_sprite))
 
     screen.fill((93, 148, 251))
     player_sprite.draw(screen)
     world_sprite.draw(screen)
-    # пули
+    bullet_sprite.draw(screen)
+
+    for bul in bullet:
+        bul.update()
 
     keys = pygame.key.get_pressed()
     if isJump and isJumpCounter != 3:
