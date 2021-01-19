@@ -8,6 +8,7 @@ isJump = False
 isJumpCounter = 0
 JumpTime = 0
 lvl_board = list()
+bullet = list()
 
 pygame.init()
 
@@ -20,13 +21,12 @@ bullet_sprite = pygame.sprite.Group()
 class Bullet(pygame.sprite.Sprite):
     def __init__(self, map_pos, group):
         super().__init__(group)
-        self.map_pos = [map_pos[0] + 1, map_pos[1] + 1]
+        self.map_pos = [map_pos[0] + 1, map_pos[1] + 2]
         self.image = pygame.Surface((10, 5))
         self.image.fill(color=(255, 255, 0))
         self.rect = self.image.get_rect()
         self.rect.x = self.map_pos[0] * 16
         self.rect.y = 432 - self.map_pos[1] * 16
-        print(self.rect.y)
         self.speedx = 16
 
     def update(self):
@@ -134,18 +134,24 @@ def map_generator(lvl):
 
 
 def lvl_loader(lvl):
-    global isJump, isJumpCounter, JumpTime, lvl_board
+    global isJump, isJumpCounter, JumpTime, lvl_board, player
+    global world_sprite, bullet_sprite, player_sprite
+
     isJump = False
     isJumpCounter = 0
     JumpTime = 0
-
     lvl_board = list()
+
+    player_sprite = pygame.sprite.Group()
+    world_sprite = pygame.sprite.Group()
+    bullet_sprite = pygame.sprite.Group()
+    player.kill()
+
     map_generator(lvl)
+    player = Player(player_sprite)
 
 
 lvl_loader('lvl1.txt')
-
-bullet = []
 
 clock = pygame.time.Clock()
 while SG:
@@ -158,7 +164,7 @@ while SG:
                 if JumpTime <= time.time():
                     isJumpCounter = 0
                     isJump = True
-            if event.key == pygame.K_h:
+            if event.key == pygame.K_j:
                 bullet.append(Bullet(player.map_pos, bullet_sprite))
 
     screen.fill((93, 148, 251))
