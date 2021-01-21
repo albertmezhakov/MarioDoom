@@ -4,11 +4,12 @@ import time
 DISPLAY_SIZE = (1024, 512)
 MAX_MAP_POS = (61, 27)
 SG = True
-isJump = False
-isJumpCounter = 0
-JumpTime = 0
+
 lvl_board = list()
 bullet = list()
+mob_list = dict()
+mob_counter = 0
+last_lvl = 'lvl1.txt'
 
 pygame.init()
 
@@ -28,13 +29,46 @@ class Bullet(pygame.sprite.Sprite):
         self.rect.x = self.map_pos[0] * 16
         self.rect.y = 432 - self.map_pos[1] * 16
         self.speedx = 16
+        self.right = player.right
 
     def update(self):
-        if lvl_board[bul.map_pos[1]][self.map_pos[0] + 1] == '/':
-            self.rect.x += bul.speedx
-            self.map_pos[0] += 1
+        global mob_counter
+        if self.right:
+            if lvl_board[self.map_pos[1] - 2][self.map_pos[0] + 1] != '1':
+                if lvl_board[bul.map_pos[1]][self.map_pos[0] + 1] == '/':
+                    self.rect.x += bul.speedx
+                    self.map_pos[0] += 1
+                else:
+                    self.kill()
+            else:
+                try:
+                    mob_list[f'{str(self.map_pos[0] + 1)}x{str(self.map_pos[1] - 2)}'].kill()
+                    del mob_list[f'{str(self.map_pos[0] + 1)}x{str(self.map_pos[1] - 2)}']
+                    mob_counter -= 1
+                    bullet.pop(bullet.index(self))
+                    self.kill()
+
+                except KeyError:
+                    self.rect.x += bul.speedx
+                    self.map_pos[0] += 1
         else:
-            self.kill()
+            if lvl_board[self.map_pos[1] - 2][self.map_pos[0] - 1] != '1':
+                if lvl_board[self.map_pos[1] - 2][self.map_pos[0] - 1] == '/':
+                    self.rect.x -= bul.speedx
+                    self.map_pos[0] -= 1
+                else:
+                    self.kill()
+            else:
+                try:
+                    mob_list[f'{str(self.map_pos[0] - 1)}x{str(self.map_pos[1] - 2)}'].kill()
+                    del mob_list[f'{str(self.map_pos[0] - 1)}x{str(self.map_pos[1] - 2)}']
+                    mob_counter -= 1
+                    bullet.pop(bullet.index(self))
+                    self.kill()
+
+                except KeyError:
+                    self.rect.x -= bul.speedx
+                    self.map_pos[0] -= 1
 
 
 def load_image(image_path, colorkey=None):
@@ -49,23 +83,29 @@ def load_image(image_path, colorkey=None):
 
 
 class Player(pygame.sprite.Sprite):
-    image = load_image("player.png", -1)
+    image_right = load_image("player_right.png", -1)
+    image_left = load_image("player_left.png", -1)
 
     def __init__(self, group):
         super().__init__(group)
-        self.image = Player.image
+        self.image = Player.image_right
         self.rect = self.image.get_rect()
         self.velocity_walk = 16
         self.map_pos = [1, 0]
-
+        self.isJump = False
+        self.isJumpCounter = 0
+        self.jumpTime = 0
         self.rect.x = 16
         self.rect.y = 390
+        self.right = True
 
     def next(self):
+        self.right = True
         self.rect.x = self.rect.x + self.velocity_walk
         return self.rect.x
 
     def back(self):
+        self.right = False
         self.rect.x = self.rect.x - self.velocity_walk
         return self.rect.x
 
@@ -77,7 +117,7 @@ class Player(pygame.sprite.Sprite):
         self.rect.y = self.rect.y - 32
 
     def update(self):
-        self.rect = self.rect
+        self.image = Player.image_right if self.right else Player.image_left
 
 
 player = Player(player_sprite)
@@ -88,6 +128,16 @@ def canGo(pos):
     for i in range(2):
         for j in range(4):
             if lvl_board[pos[1] + j][pos[0] + i] == '/':
+                count += 1
+            elif lvl_board[pos[1] + j][pos[0] + i] == '1':
+                try:
+                    mob_list[f'{str(pos[0] + i)}x{str(pos[1] + j)}'].kill()
+                    lvl_loader(last_lvl)
+                except KeyError:
+                    count += 1
+            elif lvl_board[pos[1] + j][pos[0] + i] == '-':
+                count += 1
+            elif lvl_board[pos[1] + j][pos[0] + i] == '+':
                 count += 1
     if count == 8:
         return True
@@ -111,7 +161,7 @@ def checkGrav(pos):
 
 
 def map_generator(lvl):
-    global lvl_board
+    global lvl_board, mob_counter
     with open(lvl, mode='r', encoding='utf8') as f:
         f = f.read()
         lvl_board = f.replace(' ', '/').split('\n')
@@ -125,6 +175,26 @@ def map_generator(lvl):
                         block.rect = block.image.get_rect()
                         block.rect.x = 16 * i
                         block.rect.y = int(line[0]) * 16
+                    elif line[1][i] == '1':
+                        mob = pygame.sprite.Sprite(world_sprite)
+                        mob.image = load_image('3x1_mob.png', -1)
+                        mob.rect = mob.image.get_rect()
+                        mob.rect.x = 16 * i
+                        mob.rect.y = (int(line[0]) - 2) * 16
+                        mob_counter += 1
+                        mob_list[f'{str(i)}x{str(27 - line[0])}'] = mob
+                    elif line[1][i] == '-':
+                        grass_dec_min = pygame.sprite.Sprite(world_sprite)
+                        grass_dec_min.image = load_image('grass_min.png', -1)
+                        grass_dec_min.rect = grass_dec_min.image.get_rect()
+                        grass_dec_min.rect.x = 16 * i
+                        grass_dec_min.rect.y = (int(line[0])) * 16
+                    elif line[1][i] == '+':
+                        grass_dec_max = pygame.sprite.Sprite(world_sprite)
+                        grass_dec_max.image = load_image('grass_max.png', -1)
+                        grass_dec_max.rect = mob.image.get_rect()
+                        grass_dec_max.rect.x = 16 * i
+                        grass_dec_max.rect.y = (int(line[0])) * 16
 
     grass = pygame.sprite.Sprite(world_sprite)
     grass.image = load_image('grass-ground.png')
@@ -134,12 +204,13 @@ def map_generator(lvl):
 
 
 def lvl_loader(lvl):
-    global isJump, isJumpCounter, JumpTime, lvl_board, player
+    global lvl_board, player, last_lvl, mob_counter
     global world_sprite, bullet_sprite, player_sprite
-
-    isJump = False
-    isJumpCounter = 0
-    JumpTime = 0
+    last_lvl = lvl
+    player.isJump = False
+    player.isJumpCounter = 0
+    player.jumpTime = 0
+    mob_counter = 0
     lvl_board = list()
 
     player_sprite = pygame.sprite.Group()
@@ -155,38 +226,42 @@ lvl_loader('lvl1.txt')
 
 clock = pygame.time.Clock()
 while SG:
+    print(mob_counter)
     dt = clock.tick(30)
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             SG = False
         elif event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_SPACE and not isJump:
-                if JumpTime <= time.time():
-                    isJumpCounter = 0
-                    isJump = True
-            if event.key == pygame.K_j:
+            if event.key == pygame.K_SPACE and not player.isJump:
+                if player.jumpTime <= time.time():
+                    player.isJumpCounter = 0
+                    player.isJump = True
+            if event.key == pygame.K_j and not player.isJump:
                 bullet.append(Bullet(player.map_pos, bullet_sprite))
 
     screen.fill((93, 148, 251))
     player_sprite.draw(screen)
     world_sprite.draw(screen)
     bullet_sprite.draw(screen)
-
+    player.update()
     for bul in bullet:
         bul.update()
 
+    # if mob_counter == 0:
+    #     SG = False
+
     keys = pygame.key.get_pressed()
-    if isJump and isJumpCounter != 3:
+    if player.isJump and player.isJumpCounter != 3:
         if canJump(player.map_pos):
             player.map_pos[1] += 2
             player.jump()
-            isJumpCounter += 1
-            if isJumpCounter == 3:
-                isJump = False
-                JumpTime = time.time() + 0.35
+            player.isJumpCounter += 1
+            if player.isJumpCounter == 3:
+                player.isJump = False
+                player.umpTime = time.time() + 0.35
         else:
-            isJump = False
-            JumpTime = time.time() + 0.35
+            player.isJump = False
+            player.jumpTime = time.time() + 0.35
 
     if keys[pygame.K_d] and player.map_pos[0] + 1 <= MAX_MAP_POS[0]:
         if canGo([player.map_pos[0] + 1, player.map_pos[1]]):
@@ -198,7 +273,7 @@ while SG:
             player.map_pos[0] -= 1
             player.back()
 
-    if checkGrav(player.map_pos) and not isJump:
+    if checkGrav(player.map_pos) and not player.isJump:
         player.gravit()
 
     pygame.display.flip()
